@@ -1,0 +1,7 @@
+#include <iostream>
+
+int main()
+{
+	std::cout << "Hello from {{name}}\n";
+	return 0;
+}

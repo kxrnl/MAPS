@@ -1,0 +1,17 @@
+# alias=folder (one per line)
+c++=C++
+cpp=C++
+cc=C++
+cxx=C++
+c=C
+py=PY
+python=PY
+python3=PY
+js=JS
+javascript=JS
+node=JS
+nodejs=JS
+java=JAVA
+web=WEB
+html=WEB
+website=WEB
