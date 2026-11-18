@@ -15,7 +15,7 @@ FEU Institute of Technology
 #include <string>
 
 #ifdef _WIN32
-// #define NOMINMAX
+#define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #elif defined(__APPLE__)
@@ -26,6 +26,9 @@ FEU Institute of Technology
 
 using namespace std;
 namespace fs = filesystem;
+
+// a project folder is only shown by "list" if it holds this file
+const string MARKER = ".maps";
 
 // folder that holds the program itself (the only OS specific code besides
 // homeDir)
@@ -112,6 +115,15 @@ void writeFile(const fs::path &path, const string &content) {
   out << content;
 }
 
+// asks a yes/no question, only "y" or "yes" counts as yes
+bool confirm(const string &question) {
+  cout << question << " (y/n): ";
+  string answer;
+  getline(cin, answer);
+  answer = toLower(trim(answer));
+  return answer == "y" || answer == "yes";
+}
+
 // settings stay in the user's home, program files may be read-only
 fs::path configFile() { return homeDir() / ".maps_config"; }
 
@@ -121,7 +133,7 @@ fs::path loadRoot() {
   string line;
   if (getline(in, line) && !line.empty())
     return fs::path(line);
-  return homeDir() / "ProjectManager"; // default
+  return homeDir() / "MAPS"; // default
 }
 
 // templates sit next to the program
@@ -166,15 +178,20 @@ void copyTemplate(const fs::path &from, const fs::path &to,
 }
 
 void printHelp() {
+  cout << "Current Head folder: " << loadRoot().string() << "\n\n";
   cout << "Usage:\n";
   cout << "  maps new <name> <lang> [type]   create a project (example: maps "
-          "new "
-          "calc cpp)\n";
+          "new calc cpp)\n";
+  cout << "  maps add <name> <lang>          show an existing project folder "
+          "in the list\n";
   cout << "  maps list                       show all projects\n";
   cout << "  maps templates                  show available templates\n";
   cout << "  maps root                       show the head folder\n";
-  cout << "  maps root <path>                change the head folder\n";
-  cout << "  maps help                       show this message\n";
+  cout << "  maps root <path>                change the head folder (full "
+          "path, folder must exist)\n";
+  cout << "  maps root reset                 go back to the default head "
+          "folder\n";
+  cout << "  maps help                       show this help message\n";
 }
 
 void newProject(const string &name, const string &lang, const string &type) {
@@ -197,10 +214,30 @@ void newProject(const string &name, const string &lang, const string &type) {
          << ", made an empty project.\n";
   if (!fs::exists(project / "README.md"))
     writeFile(project / "README.md", "# " + name + "\n");
+  writeFile(project / MARKER, "created by MAPS\n");
   cout << "Created " << project.string() << "\n";
 }
 
-// prints each folder and the folders inside it
+// marks a folder that is already in the head folder as a project
+void addProject(const string &name, const string &lang) {
+  if (!isValidName(name) || !isValidName(lang)) {
+    cout << "Error: invalid name.\n";
+    return;
+  }
+  fs::path project = loadRoot() / languageFolder(lang) / name;
+  if (!fs::is_directory(project)) {
+    cout << "Error: no folder at " << project.string() << "\n";
+    return;
+  }
+  if (fs::exists(project / MARKER)) {
+    cout << "Already in the list.\n";
+    return;
+  }
+  writeFile(project / MARKER, "created by MAPS\n");
+  cout << "Added " << project.string() << "\n";
+}
+
+// prints each folder and the folders inside it (used for templates)
 void printFolders(const fs::path &root) {
   for (const auto &outer : fs::directory_iterator(root)) {
     if (!outer.is_directory())
@@ -212,13 +249,33 @@ void printFolders(const fs::path &root) {
   }
 }
 
+// shows only folders that hold the marker file
 void listProjects() {
   fs::path root = loadRoot();
   if (!fs::exists(root)) {
     cout << "No projects yet.\n";
     return;
   }
-  printFolders(root);
+  auto skip = fs::directory_options::skip_permission_denied;
+  bool found = false;
+  for (const auto &langDir : fs::directory_iterator(root, skip)) {
+    if (!langDir.is_directory())
+      continue;
+    bool printedLang = false;
+    for (const auto &projectDir :
+         fs::directory_iterator(langDir.path(), skip)) {
+      if (!projectDir.is_directory() || !fs::exists(projectDir.path() / MARKER))
+        continue;
+      if (!printedLang) {
+        cout << langDir.path().filename().string() << "\n";
+        printedLang = true;
+      }
+      cout << "\t" << projectDir.path().filename().string() << "\n";
+      found = true;
+    }
+  }
+  if (!found)
+    cout << "No projects yet.\n";
 }
 
 void listTemplates() {
@@ -232,35 +289,78 @@ void listTemplates() {
   printFolders(dir);
 }
 
+// changes the head folder, only for a full path of a folder that already exists
 void setRoot(const string &path) {
-  fs::path root = fs::absolute(path);
-  fs::create_directories(root);
+  fs::path root = fs::path(path).lexically_normal();
+  if (!root.has_filename()) // remove a trailing slash
+    root = root.parent_path();
+  if (!root.is_absolute()) {
+    cout << "Error: use the full path, for example C:\\Users\\name\\Projects\n";
+    return;
+  }
+  if (!fs::is_directory(root)) {
+    cout << "Error: that folder does not exist. Make it first, then try "
+            "again.\n";
+    return;
+  }
+  if (root == root.root_path() || root == exeDir()) {
+    cout << "Error: do not use a drive root or the program folder.\n";
+    return;
+  }
+  cout << "Old head folder: " << loadRoot().string() << "\n";
+  cout << "New head folder: " << root.string() << "\n";
+  cout << "Old projects stay where they are.\n";
+  if (!confirm("Change it?")) {
+    cout << "Cancelled.\n";
+    return;
+  }
   ofstream out(configFile());
   out << root.string() << "\n";
-  cout << "Head folder set to " << root.string() << "\n";
+  cout << "Head folder set.\n";
+}
+
+// removes the saved setting, the default folder is used again
+void resetRoot() {
+  fs::remove(configFile());
+  cout << "Head folder is the default again: " << loadRoot().string() << "\n";
 }
 
 int main(int argc, char *argv[]) {
+  // 1. Check if the user passed any arguments at all (prevents crash)
   if (argc < 2) {
+    cout << "ERROR: maps expected an argument. Try -> maps -h\n";
+    return 0;
+  }
+
+  string arg1 = argv[1];
+
+  // 2. Check for help flags
+  if (arg1 == "-h" || arg1 == "--help" || arg1 == "?") {
     printHelp();
     return 0;
   }
-  string command = argv[1];
+
+  // 3. Process normal commands
+  string command = arg1;
   try {
     if (command == "new" && (argc == 4 || argc == 5))
       newProject(argv[2], argv[3], argc == 5 ? argv[4] : "default");
+    else if (command == "add" && argc == 4)
+      addProject(argv[2], argv[3]);
     else if (command == "list")
       listProjects();
     else if (command == "templates")
       listTemplates();
     else if (command == "root" && argc == 2)
       cout << loadRoot().string() << "\n";
+    else if (command == "root" && argc == 3 && string(argv[2]) == "reset")
+      resetRoot();
     else if (command == "root" && argc == 3)
       setRoot(argv[2]);
     else if (command == "help")
       printHelp();
     else {
-      cout << "Unknown command or wrong arguments.\n";
+      cout << "\nUnknown command or wrong arguments.\n";
       printHelp();
       return 1;
     }
