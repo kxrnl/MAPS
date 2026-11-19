@@ -5,7 +5,7 @@
 rem build and run MAPS
 cd /d "%~dp0"
 if not exist "build" mkdir "build"
-g++ -std=c++20 main.cpp -o ./build/maps.exe
+g++ -std=c++20 ./src/main.cpp -o ./build/maps.exe
 if errorlevel 1 (
 	pause
 	exit /b 1

@@ -37,13 +37,15 @@ namespace fs = filesystem;
 const string MARKER = ".maps";
 
 // folder that holds the program itself (the only OS specific code besides
-// homeDir)
-fs::path exeDir() {
+// homeDir
+
+// old platform checker
+/*
 #ifdef _WIN32
-  wchar_t buffer[MAX_PATH];
-  DWORD length = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
-  if (length > 0 && length < MAX_PATH)
-    return fs::path(buffer).parent_path();
+wchar_t buffer[MAX_PATH];
+DWORD length = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+if (length > 0 && length < MAX_PATH)
+  return fs::path(buffer).parent_path();
 #elif defined(__APPLE__)
   char buffer[4096];
   uint32_t size = sizeof(buffer);
@@ -57,11 +59,21 @@ fs::path exeDir() {
     return fs::path(buffer).parent_path();
   }
 #endif
+*/
+
+fs::path exeDir() {
+  wchar_t buffer[MAX_PATH];
+  DWORD length = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+  if (length > 0 && length < MAX_PATH)
+    return fs::path(buffer).parent_path();
   return fs::current_path(); // fallback
 }
 
 // home folder of the current user
 fs::path homeDir() {
+
+  // not removing directory check for linux and mac for fuutre purposes (same as
+  // above)
   const char *home = getenv("HOME"); // linux, mac
   if (home == nullptr)
     home = getenv("USERPROFILE"); // windows
