@@ -154,8 +154,13 @@ fs::path loadRoot() {
   return homeDir() / "MAPS"; // default
 }
 
-// templates sit next to the program
-fs::path templatesDir() { return exeDir() / "templates"; }
+// templates now located permanently on %APPDATA%/MAPS/...
+fs::path templatesDir() {
+  const char *appData = getenv("APPDATA");
+  if (appData == nullptr)
+    return homeDir() / ".maps" / "templates";
+  return fs::path(appData) / "MAPS" / "templates";
+}
 
 // turns cpp, c++, CPP... into the language folder name using aliases.txt
 string languageFolder(const string &input) {
@@ -195,23 +200,45 @@ void copyTemplate(const fs::path &from, const fs::path &to,
   }
 }
 
+void showInfo() {
+  fs::path root = loadRoot();
+  fs::path templates = templatesDir();
+  fs::path config = configFile();
+  cout << "Head folder : " << root.string()
+       << (fs::exists(root) ? "" : "  (not made yet)") << "\n";
+  cout << "Templates   : " << templates.string()
+       << (fs::exists(templates) ? "" : "  (missing)") << "\n";
+  cout << "Settings    : " << config.string()
+       << (fs::exists(config) ? "" : "  (not set, default head folder in use)")
+       << "\n";
+  cout << "Marker file : " << MARKER << " (inside each project)\n";
+}
+
 void printHelp() {
-  cout << "Current Head folder: " << loadRoot().string() << "\n\n";
-  cout << "Usage:\n";
-  cout << "  maps new <project_name> <lang> [type]   create a project "
+  cout << "M.A.P.S - Modular Architecture Project Scaffolder" << endl;
+  cout << "Current Head folder: " << loadRoot().string() << "\n" << endl;
+  cout << "Usage:" << endl;
+  cout << "\tmaps new <project_name> <lang> [type]   create a project "
           "(example: maps "
-          "new calc cpp)\n";
-  cout << "  maps add <project_name> <lang>          show an existing project "
+          "new calc cpp)"
+       << endl;
+  cout << "\tmaps add <project_name> <lang>          show an existing project "
           "folder "
-          "in the list\n";
-  cout << "  maps list                       show all projects\n";
-  cout << "  maps templates                  show available templates\n";
-  cout << "  maps root                       show the head folder\n";
-  cout << "  maps root <path>                change the head folder (full "
-          "path, folder must exist)\n";
-  cout << "  maps root reset                 go back to the default head "
-          "folder\n";
-  cout << "  maps help                       show this help message\n";
+          "in the list"
+       << endl;
+  cout << "\tmaps list                       show all projects" << endl;
+  cout << "\tmaps templates                  show available templates" << endl;
+  cout << "\tmaps root                       show the head folder" << endl;
+  cout << "\tmaps root <path>                change the head folder (full "
+          "path, folder must exist)"
+       << endl;
+  cout << "\tmaps root reset                 go back to the default head "
+          "folder"
+       << endl;
+  cout << "\tmaps help                       show this help message" << endl;
+  cout << "\tmaps info                       show important file/folder "
+          "locations"
+       << endl;
 }
 
 void newProject(const string &name, const string &lang, const string &type) {
@@ -379,7 +406,9 @@ int main(int argc, char *argv[]) {
       setRoot(argv[2]);
     else if (command == "help")
       printHelp();
-    else {
+    else if (command == "info" && argc == 2) {
+      showInfo();
+    } else {
       cout << "\nUnknown command or wrong arguments.\n";
       printHelp();
       return 1;
