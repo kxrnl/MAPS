@@ -1,6 +1,6 @@
 /*
 
-M.A.P.S by ????
+M.A.P.S by Taurus Software
 Creation date: 11/12/2026
 FEU Institute of Technology
 
@@ -15,7 +15,11 @@ FEU Institute of Technology
 #include <string>
 
 #ifdef _WIN32
+// check if NOMINMAX should be used
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #elif defined(__APPLE__)
@@ -28,6 +32,8 @@ using namespace std;
 namespace fs = filesystem;
 
 // a project folder is only shown by "list" if it holds this file
+// this ".maps" marker is the tracker whether a project is created by this
+// program
 const string MARKER = ".maps";
 
 // folder that holds the program itself (the only OS specific code besides
@@ -180,9 +186,11 @@ void copyTemplate(const fs::path &from, const fs::path &to,
 void printHelp() {
   cout << "Current Head folder: " << loadRoot().string() << "\n\n";
   cout << "Usage:\n";
-  cout << "  maps new <name> <lang> [type]   create a project (example: maps "
+  cout << "  maps new <project_name> <lang> [type]   create a project "
+          "(example: maps "
           "new calc cpp)\n";
-  cout << "  maps add <name> <lang>          show an existing project folder "
+  cout << "  maps add <project_name> <lang>          show an existing project "
+          "folder "
           "in the list\n";
   cout << "  maps list                       show all projects\n";
   cout << "  maps templates                  show available templates\n";
