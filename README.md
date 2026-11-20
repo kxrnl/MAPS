@@ -110,9 +110,10 @@ Settings    : C:\Users\you\.maps_config  (not set, default head folder in use)
 Marker file : .maps (inside each project)
 ```
 
-## Quick start
+> [!WARNING]
+> **Running a standalone `.exe` alone will not work** because the project depends on the `templates` folder. Building from source (or extracting the full repository structure) ensures all required template files are present.
 
-> [!IMPORTANT] Github Release is not recommended if you are just starting to use this tool!
+## Quick start
 
 ### Requirements
 
