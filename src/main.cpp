@@ -222,9 +222,8 @@ void printHelp() {
           "(example: maps "
           "new calc cpp)"
        << endl;
-  cout << "\tmaps add <project_name> <lang>          show an existing project "
-          "folder "
-          "in the list"
+  cout << "\tmaps import <path> <lang>       move a project folder into the "
+          "head folder"
        << endl;
   cout << "\tmaps list                       show all projects" << endl;
   cout << "\tmaps templates                  show available templates" << endl;
@@ -265,23 +264,113 @@ void newProject(const string &name, const string &lang, const string &type) {
   cout << "Created " << project.string() << "\n";
 }
 
-// marks a folder that is already in the head folder as a project
-void addProject(const string &name, const string &lang) {
-  if (!isValidName(name) || !isValidName(lang)) {
-    cout << "Error: invalid name.\n";
+// true if path is the same folder as base, or inside it
+bool isInside(const fs::path &path, const fs::path &base) {
+  if (base.empty() || !fs::exists(base))
+    return false;
+  for (fs::path p = path;; p = p.parent_path()) {
+    if (fs::exists(p) && fs::equivalent(p, base))
+      return true;
+    if (p == p.parent_path())
+      return false;
+  }
+}
+
+// returns why a folder must not be moved, or an empty text if it is fine
+string protectedReason(const fs::path &source, const fs::path &root) {
+  // drive roots and top level folders (C:\Windows, C:\Users, ...)
+  if (source.parent_path() == source.root_path())
+    return "it is a drive root or a top level folder";
+
+  // system and program folders, and everything inside them
+  const char *systemVars[] = {"SystemRoot",        "ProgramFiles",
+                              "ProgramFiles(x86)", "ProgramData",
+                              "APPDATA",           "LOCALAPPDATA"};
+  for (const char *name : systemVars) {
+    const char *value = getenv(name);
+    if (value != nullptr && isInside(source, fs::path(value)))
+      return "it is a system or program folder";
+  }
+
+  // the folder that holds the running program
+  if (isInside(exeDir(), source))
+    return "it holds the program";
+
+  // the home folder and its own folders (Documents, Desktop, ...)
+  fs::path home = homeDir();
+  fs::path parent = source.parent_path();
+  if (fs::exists(home) && fs::equivalent(source, home))
+    return "it is your home folder";
+  bool inHome =
+      fs::exists(home) && fs::exists(parent) && fs::equivalent(parent, home);
+  bool inOneDrive =
+      toLower(parent.filename().string()).rfind("onedrive", 0) == 0;
+  string name = toLower(source.filename().string());
+  const char *userFolders[] = {
+      "documents", "desktop",  "downloads", "pictures",    "music",
+      "videos",    "onedrive", "appdata",   "saved games", "favorites",
+      "links",     "contacts", "searches",  "3d objects"};
+  if (inHome || inOneDrive)
+    for (const char *folder : userFolders)
+      if (name == folder)
+        return "it is a user folder such as Documents or Desktop";
+  if (inHome && name[0] == '.')
+    return "it is a settings folder";
+
+  // the head folder, and the language folders inside it
+  if (isInside(root, source))
+    return "it holds the head folder";
+  if (fs::exists(root) && fs::exists(parent) && fs::equivalent(parent, root))
+    return "it is a language folder of MAPS";
+  return "";
+}
+
+// moves a project folder into the head folder: head folder / language / name
+void importProject(const string &path, const string &lang) {
+  if (!isValidName(lang)) {
+    cout << "Error: invalid language.\n";
     return;
   }
-  fs::path project = loadRoot() / languageFolder(lang) / name;
-  if (!fs::is_directory(project)) {
-    cout << "Error: no folder at " << project.string() << "\n";
+  fs::path source = fs::absolute(path).lexically_normal();
+  if (!source.has_filename()) // remove a trailing slash
+    source = source.parent_path();
+  if (!fs::is_directory(source)) {
+    cout << "Error: that folder does not exist.\n";
     return;
   }
-  if (fs::exists(project / MARKER)) {
-    cout << "Already in the list.\n";
+  fs::path root = loadRoot();
+  string reason = protectedReason(source, root);
+  if (reason != "") {
+    cout << "Error: this folder is protected, " << reason << ".\n";
     return;
   }
-  writeFile(project / MARKER, "created by MAPS\n");
-  cout << "Added " << project.string() << "\n";
+  fs::path dest = root / languageFolder(lang) / source.filename();
+  if (fs::exists(dest) && fs::equivalent(dest, source)) {
+    writeFile(dest / MARKER, "created by MAPS\n"); // already in place
+    cout << "Added " << dest.string() << "\n";
+    return;
+  }
+  if (fs::exists(dest)) {
+    cout << "Error: a project with this name already exists in "
+         << dest.parent_path().string() << "\n";
+    return;
+  }
+  cout << "Move from: " << source.string() << "\n";
+  cout << "Move to  : " << dest.string() << "\n";
+  if (!confirm("Move the folder?")) {
+    cout << "Cancelled.\n";
+    return;
+  }
+  fs::create_directories(dest.parent_path());
+  error_code ec;
+  fs::rename(source, dest, ec);
+  if (ec) {
+    cout << "Error: could not move the folder. Close any program that uses it. "
+            "The new place must be on the same drive.\n";
+    return;
+  }
+  writeFile(dest / MARKER, "created by MAPS\n");
+  cout << "Imported " << dest.string() << "\n";
 }
 
 // prints each folder and the folders inside it (used for templates)
@@ -392,8 +481,8 @@ int main(int argc, char *argv[]) {
   try {
     if (command == "new" && (argc == 4 || argc == 5))
       newProject(argv[2], argv[3], argc == 5 ? argv[4] : "default");
-    else if (command == "add" && argc == 4)
-      addProject(argv[2], argv[3]);
+    else if (command == "import" && argc == 4)
+      importProject(argv[2], argv[3]);
     else if (command == "list")
       listProjects();
     else if (command == "templates")
