@@ -112,6 +112,8 @@ Marker file : .maps (inside each project)
 
 ## Quick start
 
+> [!IMPORTANT] Github Release is not recommended if you are just starting to use this tool!
+
 ### Requirements
 
 | Item | Value |
