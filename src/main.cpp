@@ -463,6 +463,10 @@ void resetRoot() {
 }
 
 int main(int argc, char *argv[]) {
+
+  // Will add menu here instead of a cli
+  // Thinking of serving both cli mode and menu mode
+
   // 1. Check if the user passed any arguments at all (prevents crash)
   if (argc < 2) {
     cout << "ERROR: maps expected an argument. Try -> maps -h\n";
