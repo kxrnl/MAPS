@@ -190,7 +190,7 @@ Result: the terminal shows the help text.
 
 Result: the terminal shows the templates folder and its languages.
 
-### First project
+### Creating Your First project
 
 1. Open a terminal.
 2. Enter `maps new hello cpp`.

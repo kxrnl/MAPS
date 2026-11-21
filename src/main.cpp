@@ -163,6 +163,7 @@ fs::path templatesDir() {
 }
 
 // turns cpp, c++, CPP... into the language folder name using aliases.txt
+// aliases are recognized via the (tolower -> trim -> comparison) on line 178
 string languageFolder(const string &input) {
   string key = toLower(input);
   fs::path templates = templatesDir();
@@ -257,7 +258,7 @@ void newProject(const string &name, const string &lang, const string &type) {
     copyTemplate(source, project, name);
   else
     cout << "Note: no template at " << source.string()
-         << ", made an empty project.\n";
+         << ", made an empty project folder.\n";
   if (!fs::exists(project / "README.md"))
     writeFile(project / "README.md", "# " + name + "\n");
   writeFile(project / MARKER, "created by MAPS\n");
