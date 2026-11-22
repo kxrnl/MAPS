@@ -1,5 +1,8 @@
 /*
 
+Main MAPS - Full tool version
+Yes there is a lite version of this tool go find it
+
 M.A.P.S by Taurus Software
 Creation date: 11/12/2026
 FEU Institute of Technology
