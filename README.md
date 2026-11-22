@@ -8,8 +8,6 @@ A command-line tool that makes and organizes project folders by language.
 
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
-![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
-![Tests](https://img.shields.io/badge/tests-54%20cases-blue)
 ![Status](https://img.shields.io/badge/status-in%20development-orange)
 
 [Overview](#overview) · [Quick start](#quick-start) · [Commands](#commands) · [Templates](#templates) · [Safety](#safety-rules) · [Testing](#testing) · [Roadmap](#roadmap)
