@@ -6,7 +6,7 @@
 @REM Main builder
 cd /d "%~dp0"
 if not exist "build" mkdir "build"
-g++ -std=c++20 ./src/main.cpp -o ./build/maps-demo.exe
+g++ -std=c++20 -static ./src/main.cpp -o ./build/maps-demo.exe
 if errorlevel 1 (
 	pause
 	exit /b 1
