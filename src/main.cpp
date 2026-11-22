@@ -13,23 +13,11 @@ FEU Institute of Technology
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
-#ifdef _WIN32
-// check if NOMINMAX should be used
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#elif defined(__APPLE__)
-#include <mach-o/dyld.h>
-#else
-#include <unistd.h>
-#endif
 
 using namespace std;
 namespace fs = filesystem;
@@ -52,11 +40,37 @@ struct LanguageTemplate {
 };
 
 fs::path exeDir() {
+#ifdef _WIN32
   wchar_t buffer[MAX_PATH];
   DWORD length = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
   if (length > 0 && length < MAX_PATH)
     return fs::path(buffer).parent_path();
+#endif
   return fs::current_path(); // fallback
+}
+
+// get terminal width
+int getTerminalWidth() {
+#ifdef _WIN32
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hOut != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(hOut, &csbi)) {
+    int width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    if (width > 0)
+      return width;
+  }
+#endif
+  return 80; // fallback width
+}
+
+// just seperation with "="
+void printSeparator(char ch = '=') {
+  int width = getTerminalWidth();
+#ifdef _WIN32
+  if (width > 1)
+    --width;
+#endif
+  cout << string(static_cast<size_t>(width), ch) << "\n";
 }
 
 // home folder of the current user
@@ -136,7 +150,32 @@ fs::path loadRoot() {
   return homeDir() / "MAPS"; // default
 }
 
-// hardcoded templates for HTML, C, C++, PY, and WEB
+namespace {
+const string DEFAULT_CSS = "body {\n"
+                           "  font-family: system-ui, sans-serif;\n"
+                           "  margin: 2rem;\n"
+                           "}\n";
+
+string makeHtmlDoc(const string &cssHref, const string &bodyInner) {
+  return "<!DOCTYPE html>\n"
+         "<html lang=\"en\">\n"
+         "<head>\n"
+         "  <meta charset=\"UTF-8\" />\n"
+         "  <meta name=\"viewport\" content=\"width=device-width, "
+         "initial-scale=1.0\" />\n"
+         "  <title>{{name}}</title>\n"
+         "  <link rel=\"stylesheet\" href=\"" +
+         cssHref +
+         "\" />\n"
+         "</head>\n"
+         "<body>\n" +
+         bodyInner +
+         "</body>\n"
+         "</html>\n";
+}
+} // namespace
+
+// hardcoded templates for HTML, C, C++, PY
 const vector<LanguageTemplate> &getTemplates() {
   static const vector<LanguageTemplate> templates = {
       {
@@ -144,24 +183,8 @@ const vector<LanguageTemplate> &getTemplates() {
           {"html", "htm"},
           "index.html, style.css",
           {
-              {"index.html",
-               "<!DOCTYPE html>\n"
-               "<html lang=\"en\">\n"
-               "<head>\n"
-               "  <meta charset=\"UTF-8\" />\n"
-               "  <meta name=\"viewport\" content=\"width=device-width, "
-               "initial-scale=1.0\" />\n"
-               "  <title>{{name}}</title>\n"
-               "  <link rel=\"stylesheet\" href=\"style.css\" />\n"
-               "</head>\n"
-               "<body>\n"
-               "  <h1>{{name}}</h1>\n"
-               "</body>\n"
-               "</html>\n"},
-              {"style.css", "body {\n"
-                            "  font-family: system-ui, sans-serif;\n"
-                            "  margin: 2rem;\n"
-                            "}\n"},
+              {"index.html", makeHtmlDoc("style.css", "  <h1>{{name}}</h1>\n")},
+              {"style.css", DEFAULT_CSS},
           },
       },
       {
@@ -216,33 +239,6 @@ const vector<LanguageTemplate> &getTemplates() {
                           "    main()\n"},
           },
       },
-      {
-          "WEB",
-          {"web", "js"},
-          "index.html, css/style.css, js/app.js",
-          {
-              {"index.html",
-               "<!DOCTYPE html>\n"
-               "<html lang=\"en\">\n"
-               "<head>\n"
-               "  <meta charset=\"UTF-8\" />\n"
-               "  <meta name=\"viewport\" content=\"width=device-width, "
-               "initial-scale=1.0\" />\n"
-               "  <title>{{name}}</title>\n"
-               "  <link rel=\"stylesheet\" href=\"css/style.css\" />\n"
-               "</head>\n"
-               "<body>\n"
-               "  <h1>{{name}}</h1>\n"
-               "  <script src=\"js/app.js\"></script>\n"
-               "</body>\n"
-               "</html>\n"},
-              {"css/style.css", "body {\n"
-                                "  font-family: system-ui, sans-serif;\n"
-                                "  margin: 2rem;\n"
-                                "}\n"},
-              {"js/app.js", "console.log(\"{{name}} initialized\");\n"},
-          },
-      },
   };
   return templates;
 }
@@ -265,9 +261,25 @@ const LanguageTemplate *findTemplate(const string &input) {
 
 void showInfo() {
   fs::path root = loadRoot();
-  cout << "Head folder : " << root.string()
+
+  cout << "M.A.P.S - Modular Architecture Project Scaffolder" << endl;
+  printSeparator();
+  cout << R"(
+  Balinas, Jasper Kyle F.
+  Gabriel, Rafael Dominic C.
+  Montecillo, Terence Jerrome
+  Punto, Rionne J.
+
+  M.A.P.S by Taurus Software.
+  FEU Institute of Technology. 
+  Creation date: 11/12/2026.
+
+)";
+  printSeparator();
+
+  cout << "\nHead folder : " << root.string()
        << (fs::exists(root) ? "" : "  (not made yet)") << "\n";
-  cout << "Templates   : built-in (HTML, C, C++, PY, WEB)\n";
+  cout << "Templates   : built-in (HTML, C, C++, PY)\n";
   cout << "Settings    : " << configFile().string()
        << (fs::exists(configFile()) ? ""
                                     : "  (not set, default head folder in use)")
@@ -278,7 +290,7 @@ void showInfo() {
 void printHelp() {
   cout << "M.A.P.S - Modular Architecture Project Scaffolder" << endl;
   cout << "Current Head folder: " << loadRoot().string() << "\n" << endl;
-  cout << "Available languages: HTML, C, C++, PY, WEB" << endl;
+  cout << "Available languages: HTML, C, C++, PY" << endl;
   cout << endl;
   cout << "Usage:" << endl;
   cout << "\tmaps new <project_name> <lang>   create a project (example: "
@@ -314,7 +326,7 @@ void newProject(const string &name, const string &lang) {
   const LanguageTemplate *tpl = findTemplate(lang);
   if (tpl == nullptr) {
     cout << "Error: unknown language '" << lang
-         << "'. Available: HTML, C, C++, PY, WEB\n";
+         << "'. Available: HTML, C, C++, PY\n";
     return;
   }
 
@@ -386,7 +398,7 @@ string protectedReason(const fs::path &source, const fs::path &root) {
     for (const char *folder : userFolders)
       if (name == folder)
         return "it is a user folder such as Documents or Desktop";
-  if (inHome && name[0] == '.')
+  if (inHome && !name.empty() && name[0] == '.')
     return "it is a settings folder";
 
   // the head folder, and the language folders inside it
@@ -406,7 +418,7 @@ void importProject(const string &path, const string &lang) {
   const LanguageTemplate *tpl = findTemplate(lang);
   if (tpl == nullptr) {
     cout << "Error: unknown language '" << lang
-         << "'. Available: HTML, C, C++, PY, WEB\n";
+         << "'. Available: HTML, C, C++, PY\n";
     return;
   }
 
@@ -452,15 +464,40 @@ void importProject(const string &path, const string &lang) {
   cout << "Imported " << dest.string() << "\n";
 }
 
-// shows only folders that hold the marker file
-void listProjects() {
+// prompts for a single line of text (keeps spaces intact)
+string promptLine(const string &label) {
+  cout << label;
+  string value;
+  getline(cin, value);
+  return trim(value);
+}
+
+// open project in the file explorer
+void openInExplorer(const fs::path &folder, bool dryRun = false) {
+  if (!fs::is_directory(folder)) {
+    cout << "Error: folder does not exist.\n";
+    return;
+  }
+  string pathStr = folder.lexically_normal().make_preferred().string();
+  if (dryRun || getenv("MAPS_NO_EXPLORER") != nullptr) {
+    cout << "[TEST] Would open in Explorer: " << pathStr << "\n";
+    return;
+  }
+  string cmd = "explorer.exe \"" + pathStr + "\"";
+  system(cmd.c_str());
+  cout << "Opened in Explorer: " << pathStr << "\n";
+}
+
+// shows only folders that hold the marker file; optionally opens one on Windows
+void listProjects(bool allowOpen = false) {
   fs::path root = loadRoot();
   if (!fs::exists(root)) {
     cout << "No projects yet.\n";
     return;
   }
   auto skip = fs::directory_options::skip_permission_denied;
-  bool found = false;
+  vector<fs::path> projects;
+
   for (const auto &langDir : fs::directory_iterator(root, skip)) {
     if (!langDir.is_directory())
       continue;
@@ -473,12 +510,39 @@ void listProjects() {
         cout << langDir.path().filename().string() << "\n";
         printedLang = true;
       }
-      cout << "\t" << projectDir.path().filename().string() << "\n";
-      found = true;
+      projects.push_back(projectDir.path());
+      if (allowOpen) {
+        cout << "  [" << projects.size() << "] "
+             << projectDir.path().filename().string() << "\n";
+      } else {
+        cout << "\t" << projectDir.path().filename().string() << "\n";
+      }
     }
   }
-  if (!found)
+  if (projects.empty()) {
     cout << "No projects yet.\n";
+    return;
+  }
+
+#ifdef _WIN32
+  if (!allowOpen)
+    return;
+
+  string pick = promptLine("\nOpen project # in Explorer (Enter to skip): ");
+  if (pick.empty())
+    return;
+
+  try {
+    size_t idx = stoull(pick);
+    if (idx == 0 || idx > projects.size()) {
+      cout << "Invalid project number.\n";
+      return;
+    }
+    openInExplorer(projects[idx - 1]);
+  } catch (...) {
+    cout << "Invalid input.\n";
+  }
+#endif
 }
 
 void listTemplates() {
@@ -524,26 +588,37 @@ void resetRoot() {
   cout << "Head folder is the default again: " << loadRoot().string() << "\n";
 }
 
-// prompts for a single line of text (keeps spaces intact)
-string promptLine(const string &label) {
-  cout << label;
-  string value;
-  getline(cin, value);
-  return trim(value);
+void printMenu() {
+  cout << R"(
+=== M.A.P.S Menu ===
+  [1] New Project
+  [2] Import Project
+  [3] List Projects
+  [4] Available Languages & Templates
+
+  [5] Show Head Folder
+  [6] Change Head Folder
+  [7] Reset Head Folder
+
+  [8] Info
+  [9] Help
+  [0] Exit
+)";
 }
 
-void printMenu() {
-  cout << "\n--- M.A.P.S Menu ---\n";
-  cout << "[1] New Project\n";
-  cout << "[2] Import Project\n";
-  cout << "[3] List Projects\n";
-  cout << "[4] Available Languages & Templates\n";
-  cout << "[5] Show Head Folder\n";
-  cout << "[6] Change Head Folder\n";
-  cout << "[7] Reset Head Folder\n";
-  cout << "[8] Info\n";
-  cout << "[9] Help\n";
-  cout << "[0] Exit\n";
+// interactive numbered menu started by "maps menumode"
+void clearScreen() {
+#ifdef _WIN32
+  system("cls");
+#else
+  system("clear");
+#endif
+}
+
+void pauseMenu() {
+  cout << "\nPress Enter to continue...";
+  string dummy;
+  getline(cin, dummy);
 }
 
 // interactive numbered menu started by "maps menumode"
@@ -551,11 +626,11 @@ void runMenuMode() {
   bool cont = true;
   string choice;
 
-  cout << "M.A.P.S Interactive Menu Mode\n";
-
   do {
+    clearScreen();
+    cout << "M.A.P.S Interactive Menu Mode\n";
     printMenu();
-    cout << "Select an option: ";
+    cout << "\nSelect an option: ";
     if (!getline(cin, choice)) {
       break;
     }
@@ -565,100 +640,62 @@ void runMenuMode() {
       continue;
     }
 
+    clearScreen();
+
     try {
       if (choice == "1") {
         string name = promptLine("Project name: ");
-        string lang = promptLine("Language (HTML, C, C++, PY, WEB): ");
+        string lang = promptLine("Language (HTML, C, C++, PY): ");
         newProject(name, lang);
+        pauseMenu();
       } else if (choice == "2") {
         string path = promptLine("Folder path to import: ");
-        string lang = promptLine("Language (HTML, C, C++, PY, WEB): ");
+        string lang = promptLine("Language (HTML, C, C++, PY): ");
         importProject(path, lang);
+        pauseMenu();
       } else if (choice == "3") {
-        listProjects();
+#ifdef _WIN32
+        listProjects(true);
+#else
+        listProjects(false);
+#endif
+        pauseMenu();
       } else if (choice == "4") {
         listTemplates();
+        pauseMenu();
       } else if (choice == "5") {
         cout << loadRoot().string() << "\n";
+        pauseMenu();
       } else if (choice == "6") {
         string path = promptLine("New head folder (full path): ");
         setRoot(path);
+        pauseMenu();
       } else if (choice == "7") {
         resetRoot();
+        pauseMenu();
       } else if (choice == "8") {
         showInfo();
+        pauseMenu();
       } else if (choice == "9") {
         printHelp();
+        pauseMenu();
       } else if (choice == "0" || toLower(choice) == "exit" ||
                  toLower(choice) == "quit") {
         cont = false;
       } else {
         cout << "Invalid option. Enter a number from 0 to 9.\n";
+        pauseMenu();
       }
     } catch (const exception &e) {
       cout << "Error: " << e.what() << "\n";
+      pauseMenu();
     }
-  } while (cont != false);
+  } while (cont);
 
-  cout << "Exited menu mode.\n";
-}
-
-// runs a single command from CLI arguments
-int runCliCommand(int argc, char *argv[]) {
-  string arg1 = argv[1];
-
-  if (arg1 == "-h" || arg1 == "--help" || arg1 == "?") {
-    printHelp();
-    return 0;
-  }
-
-  try {
-    if (arg1 == "new" && argc == 4)
-      newProject(argv[2], argv[3]);
-    else if (arg1 == "import" && argc == 4)
-      importProject(argv[2], argv[3]);
-    else if (arg1 == "list")
-      listProjects();
-    else if (arg1 == "templates")
-      listTemplates();
-    else if (arg1 == "root" && argc == 2)
-      cout << loadRoot().string() << "\n";
-    else if (arg1 == "root" && argc == 3 && string(argv[2]) == "reset")
-      resetRoot();
-    else if (arg1 == "root" && argc == 3)
-      setRoot(argv[2]);
-    else if (arg1 == "help")
-      printHelp();
-    else if (arg1 == "info" && argc == 2) {
-      showInfo();
-    } else {
-      cout << "\nUnknown command or wrong arguments.\n";
-      printHelp();
-      return 1;
-    }
-  } catch (const exception &e) {
-    cout << "Error: " << e.what() << "\n";
-    return 1;
-  }
-  return 0;
+  clearScreen();
 }
 
 int main(int argc, char *argv[]) {
-  // 1. Check if the user passed any arguments at all (prevents crash)
-  if (argc < 2) {
-    cout << "ERROR: maps expected an argument. Try -> maps -h or maps "
-            "menumode\n";
-    return 0;
-  }
-
-  string arg1 = argv[1];
-
-  // 2. Enter interactive menu mode
-  if (toLower(arg1) == "menumode") {
-    runMenuMode();
-    return 0;
-  }
-
-  // 3. Process normal CLI commands
-  return runCliCommand(argc, argv);
+  runMenuMode();
+  return 0;
 }
