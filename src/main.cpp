@@ -2,7 +2,7 @@
 
 V3 - Demo Version
 
-M.A.P.S by Taurus Software
+M.A.P.S Lite by Taurus Software
 Creation date: 11/12/2026
 FEU Institute of Technology
 
@@ -288,33 +288,28 @@ void showInfo() {
 }
 
 void printHelp() {
-  cout << "M.A.P.S - Modular Architecture Project Scaffolder" << endl;
-  cout << "Current Head folder: " << loadRoot().string() << "\n" << endl;
-  cout << "Available languages: HTML, C, C++, PY" << endl;
-  cout << endl;
-  cout << "Usage:" << endl;
-  cout << "\tmaps new <project_name> <lang>   create a project (example: "
-          "maps new calc cpp)"
-       << endl;
-  cout << "\tmaps import <path> <lang>        move a project folder into the "
-          "head folder"
-       << endl;
-  cout << "\tmaps list                        show all projects" << endl;
-  cout << "\tmaps templates                   show built-in language templates"
-       << endl;
-  cout << "\tmaps root                        show the head folder" << endl;
-  cout << "\tmaps root <path>                 change the head folder (full "
-          "path, folder must exist)"
-       << endl;
-  cout << "\tmaps root reset                  go back to the default head "
-          "folder"
-       << endl;
-  cout << "\tmaps help                        show this help message" << endl;
-  cout << "\tmaps info                        show important file/folder "
-          "locations"
-       << endl;
-  cout << "\tmaps menumode                    enter interactive menu mode"
-       << endl;
+  cout << "M.A.P.S Lite Usage\n";
+  printSeparator();
+  cout << "Head folder: " << loadRoot().string() << "\n\n";
+  cout
+      << "[1] New Project            make a project from a built-in template\n";
+  cout << "[2] Import Project         move a project folder into the head "
+          "folder\n";
+  cout << "[3] List Projects          show all projects, open one in File "
+          "Explorer\n";
+  cout << "[4] Languages & Templates  show the built-in languages and their "
+          "files\n";
+  cout
+      << "[5] Show Head Folder       show the folder that holds all projects\n";
+  cout << "[6] Change Head Folder     use a new folder (full path, must "
+          "exist)\n";
+  cout << "[7] Reset Head Folder      go back to the default folder\n";
+  cout << "[8] Info                   show the team and the file locations\n";
+  cout << "[9] Help                   show this help\n";
+  cout << "[0] Exit                   close the program\n";
+  cout << "\nLanguages: HTML, C, C++, PY (not case-sensitive)\n";
+  cout << "Also accepted: htm, c++, cxx, cc, python\n";
+  printSeparator();
 }
 
 void newProject(const string &name, const string &lang) {
@@ -607,13 +602,7 @@ void printMenu() {
 }
 
 // interactive numbered menu started by "maps menumode"
-void clearScreen() {
-#ifdef _WIN32
-  system("cls");
-#else
-  system("clear");
-#endif
-}
+void clearScreen() { system("cls"); }
 
 void pauseMenu() {
   cout << "\nPress Enter to continue...";
